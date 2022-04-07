@@ -1,0 +1,8 @@
+# don't want people seeing my computer, ha ha
+docker-resources/.auto-gen
+docker-resources/info.json
+dockerhub-userdata
+certs
+jenkins_home
+var-lib-docker
+

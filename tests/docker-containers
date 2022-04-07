@@ -1,0 +1,4 @@
+#!/bin/sh
+
+docker exec --privileged -u jenkins "$1" docker run alpine:3.15 echo 'Test successful' | grep -q 'Test successful'
+

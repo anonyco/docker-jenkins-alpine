@@ -1,0 +1,4 @@
+#!/bin/sh
+
+docker exec --privileged -u jenkins "$1" curl -L 'http://localhost:8080' | grep -q '<html'
+

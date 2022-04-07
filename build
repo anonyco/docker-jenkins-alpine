@@ -1,0 +1,154 @@
+#!/bin/sh
+
+set -e
+
+if ! test -r ./dockerhub-userdata ; then
+  cat >./dockerhub-userdata <<-'USERDATA'
+	RUN_BUILD=y
+	RUN_TESTS=y
+	# change RUN_PUSH=n to RUN_PUSH=y if you want to push and tag the image up to docker hub or quay or whereever
+	RUN_PUSH=n
+	
+	# Your user/organization account information used to log into dockerhub.io or quay.io or whatever registry service you are using
+	USERNAME=
+	PASSWORD=
+	
+	REPOPREFIX=${USERNAME:-local}
+USERDATA
+  echo 'Generated an empty dockerhub-userdata template. Please fill out the information in dockerhub-userdata if you want to push the images or re-run to just build locally'
+  exit 1
+fi
+
+if ! command -v docker ; then
+  echo 'Need the docker command. Please install packages to provide it' 1>&2
+  exit 1
+fi
+
+if ! command -v jq ; then
+  echo 'Need the jq command. Please install packages to provide it' 1>&2
+  exit 1
+fi
+
+set -x
+
+. ./dockerhub-userdata
+
+if test "${RUN_PUSH:-n}" = "y" ; then
+  # I predict that accepting password as an argument will eventually be deprecated
+  if ! printf '%s\n' "$PASSWORD" | docker login --password-stdin -u "$USERNAME" ; then
+    echo 'Failed to log into the docker server.' 1>&2
+    exit 1
+  fi
+  printf "\n\n\e[0;32mLogin to your docker repo account was successful\e(B\e[m\n"
+fi
+
+# Try lts-alpine-jdk7 or lts-alpine-jdk11 or lts-alpine-jdk17
+jenkinsBaseImage="${JENKINS_BASE_IMAGE:-lts-alpine-jdk11}"
+jenkinsNameSuffix="${JENKINS_NAME_SUFFIX:-jdk11}"
+
+#mkdir -p .auto-gen
+#cat /etc/localtime > .auto-gen/localtime
+#cat /etc/timezone > .auto-gen/timezone
+#docker build --no-rm --build-arg TARGETARCH=amd64 -f Dockerfile -t local/docker_jenkins:alpine3.15 .
+latestDockerVersion="$(curl https://download.docker.com/linux/static/stable/x86_64/ | grep -oE 'docker-[0-9]*[.][0-9]*[.][0-9]*[.]tgz' | sort -rh | grep -m1 -oE '[0-9]*[.][0-9]*[.][0-9]*')"
+
+if test "${RUN_BUILD:-y}" = "y" ; then
+  docker build --build-arg "DOCKER_VERSION=$latestDockerVersion" --build-arg "JENKINS_BASE_IMAGE=$jenkinsBaseImage" -f docker-resources/Dockerfile -t local/docker-jenkins-alpine docker-resources
+
+  printf "\n\n\e[0;32mBuild was successful\e(B\e[m\n"
+else
+  echo 'Build was skipped.'
+fi
+
+if test "${RUN_TESTS:-y}" = "y" ; then
+  containerId="$( docker run --rm --detach --privileged --env DEBUG_KILLAFTER_SEC=180 --cpuset-cpus=1,3,5,7 --cpu-period=10000 local/docker-jenkins-alpine )"
+
+  # if it can't boot up in under a minute, then something is seriously wrong
+  sleep 60
+
+  for test in ./tests/*
+  do
+    echo -e '\e[0;32m> Running test '"$test"'\e(B\e[m'
+    $test "$containerId"
+  done
+
+  # All tests passed and the remaining container is of no use to us
+  docker kill "$containerId"
+
+  printf "\n\n\e[0;32mAll tested have passed! Now pushing up and tagging the image appropriately...\e(B\e[m\n"
+else
+  echo 'Tests were skipped.'
+fi
+
+# next, extract info for tagging and push it up to dockerhub
+
+set +ex
+# the echo feedback would get pretty annoying after this point
+
+if ! test "${RUN_PUSH:-n}" = "y" ; then
+  echo
+  echo 'BUILD WAS SUCCESSFUL! The resulting image is local/docker-jenkins-alpine. Usage example:'
+  echo '  docker run --rm -it --name jenkins_docker --privileged -p 8080:8080 -v "$PWD/certs/:/certs/:rw" -v "$PWD/var-lib-docker/:/var/lib/docker/:rw" -v "$PWD/jenkins_home/:/var/jenkins_home/:rw" local/docker-jenkins-alpine'
+  echo
+  exit 0
+fi
+
+dockerMinorVersion="${latestDockerVersion%.*}"
+dockerMajorVersion="${dockerMinorVersion%.*}"
+
+jenkinsRevisionVersion="$(docker inspect local/docker-jenkins-alpine | jq -r '.[0].ContainerConfig.Labels."org.opencontainers.image.version"')"
+jenkinsMinorVersion="${jenkinsRevisionVersion%.*}"
+jenkinsMajorVersion="${jenkinsMinorVersion%.*}"
+
+if printf '%q' test 1>/dev/null 2>&1 ; then
+  alias my_posix_printf=printf
+elif /usr/bin/printf '%q' test 1>/dev/null 2>&1 ; then
+  alias my_posix_printf=/usr/bin/printf
+else
+  my_posix_printf() {
+    format="$1"
+    shift
+    printf "$(echo "$format" | sed "s/%q/'%s'/")" "$@"
+  }
+fi
+
+echoback() {
+  my_posix_printf '$ '
+  my_posix_printf '%q ' "$@"
+  echo
+  "$@"
+}
+
+tagAndPushAndRmImage() (
+  set -e
+  echoback docker tag local/docker-jenkins-alpine "$1"
+  echoback docker push "$1"
+  echoback docker image rm "$1"
+)
+
+for dockVer in ',' "docker$latestDockerVersion-" "docker$dockerMinorVersion-" "docker$dockerMajorVersion-"
+do
+  if test -z "$dockVer" ; then
+    # sanity check
+    continue
+  fi
+  for jenkVer in ',' "jenkins$jenkinsRevisionVersion-" "jenkins$jenkinsMinorVersion-" "jenkins$jenkinsMajorVersion-"
+  do
+    if test -z "$jenkVer" ; then
+      # sanity check
+      continue
+    fi
+    
+    nextTag="$REPOPREFIX/docker-jenkins-alpine:${dockVer%,}${jenkVer%,}$jenkinsNameSuffix"
+    echo "STATUS: aliasing $nextTag -> local/docker-jenkins-alpine"
+    
+    tagAndPushAndRmImage "$nextTag"
+  done
+done
+
+echo
+echo 'STATUS: all tags pushed up and done!'
+echo
+
+#echo 'All tags pushed up. Now cleaning the tagged images and pruning...'
+
