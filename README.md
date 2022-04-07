@@ -2,7 +2,7 @@
 
 <!--![alt text](./artwork/combined_image.png)-->
 <p align="center">
-	<img src="artwork/combined_image.png" alt="Jenkins holding docker in one hand to serve to you" width="659" style="max-width:659px"/>
+	<img src="artwork/logo165x127.png" alt="Jenkins holding docker in one hand to serve to you" width="165" style="max-width:165px"/>
 </a>
 
 # Jenkins+Docker in Alpine
