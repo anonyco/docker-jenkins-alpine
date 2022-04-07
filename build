@@ -88,7 +88,7 @@ set +ex
 if ! test "${RUN_PUSH:-n}" = "y" ; then
   echo
   echo 'BUILD WAS SUCCESSFUL! The resulting image is local/docker-jenkins-alpine. Usage example:'
-  echo '  docker run --rm -it --name jenkins_docker --privileged -p 8080:8080 -v "$PWD/certs/:/certs/:rw" -v "$PWD/var-lib-docker/:/var/lib/docker/:rw" -v "$PWD/jenkins_home/:/var/jenkins_home/:rw" local/docker-jenkins-alpine'
+  echo '  docker run --rm -it --name jenkins_docker --privileged -p 8080:8080 -v "$PWD/certs/:/certs/:rw" -v "$PWD/var-lib-docker/:/var/lib/docker/:rw" -v "$PWD/jenkins_home/:/var/jenkins_home/:rw" -v "$PWD/var-cache-apk:/var/cache/apk:rw" local/docker-jenkins-alpine'
   echo
   exit 0
 fi

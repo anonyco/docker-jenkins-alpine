@@ -1,7 +1,7 @@
 #!/bin/sh
 
 echo
-echo 'EXAMPLE USAGE: docker run --rm -it --name jenkins_docker --privileged -p 127.0.0.1:8080:8080 -v $PWD/certs/:/certs/:rw -v $PWD/var-lib-docker/:/var/lib/docker/:rw -v $PWD/jenkins_home/:/var/jenkins_home/:rw local/docker_jenkins:alpine3.15'
+echo 'EXAMPLE USAGE: docker run --rm -it --name your_friendly_name --privileged -p 127.0.0.1:8080:8080 -v "$PWD/certs/:/certs/:rw" -v "$PWD/var-lib-docker/:/var/lib/docker/:rw" -v "$PWD/jenkins_home/:/var/jenkins_home/:rw" -v "$PWD/var-cache-apk:/var/cache/apk:rw" jackanonyco/docker-jenkins-alpine:jdk11'
 echo
 echo
 
