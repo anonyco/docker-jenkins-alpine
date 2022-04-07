@@ -100,6 +100,11 @@ jenkinsRevisionVersion="$(docker inspect local/docker-jenkins-alpine | jq -r '.[
 jenkinsMinorVersion="${jenkinsRevisionVersion%.*}"
 jenkinsMajorVersion="${jenkinsMinorVersion%.*}"
 
+if test "$jenkinsRevisionVersion" = "null" ; then
+  echo 'ERR: could not gather what the version of jenkins is. Aborting!' 1>&2
+  exit 1
+fi
+
 if printf '%q' test 1>/dev/null 2>&1 ; then
   alias my_posix_printf=printf
 elif /usr/bin/printf '%q' test 1>/dev/null 2>&1 ; then
