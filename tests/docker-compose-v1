@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# version 1 doesn't use the "version:" key at the top to indicate version
+docker exec -i --privileged -u jenkins "$1" /bin/sh -c 'cd /var/jenkins_home && cat > docker-compose.yaml && docker-compose top' <<EOL
+alpine:
+  image: alpine
+EOL
+

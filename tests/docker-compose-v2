@@ -1,0 +1,9 @@
+#!/bin/sh
+
+docker exec -i --privileged -u jenkins "$1" /bin/sh -c 'cd /var/jenkins_home && cat > docker-compose.yaml && docker compose top' <<EOL
+version: "${cutComposeVersion%.*}"
+services:
+  alpine:
+    image: alpine
+EOL
+

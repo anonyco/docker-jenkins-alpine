@@ -19,6 +19,11 @@ CMD ["/bin/sh"]
 ARG DOCKER_VERSION=20.10.14
 ENV DOCKER_VERSION=$DOCKER_VERSION
 LABEL DOCKER_VERSION=$DOCKER_VERSION
+
+ARG DOCKER_COMPOSE_VERSION=v2.2.3
+ENV DOCKER_COMPOSE_VERSION=$DOCKER_COMPOSE_VERSION
+LABEL DOCKER_COMPOSE_VERSION=$DOCKER_COMPOSE_VERSION
+
 # TODO ENV DOCKER_SHA256
 # https://github.com/docker/docker-ce/blob/5b073ee2cf564edee5adca05eee574142f7627bb/components/packaging/static/hash_files !!
 # (no SHA file artifacts on download.docker.com yet as of 2017-06-07 though)
@@ -151,9 +156,17 @@ RUN apk add --no-cache sudo shadow \
  && usermod -a -G docker jenkins \
  && addgroup -S sudo \
  && usermod -a -G sudo jenkins \
- && chown jenkins:jenkins /var/jenkins_home \
+ && chown -R jenkins:jenkins /var/jenkins_home \
  && mkdir -p /var/cache/apk \
- && ln -sf /var/cache/apk /etc/apk/cache
+ && ln -sf /var/cache/apk /etc/apk/cache \
+ && mkdir -p /usr/local/lib/docker/cli-plugins \
+ && curl -sSLo /usr/local/lib/docker/cli-plugins/docker-compose "https://github.com/docker/compose/releases/download/$DOCKER_COMPOSE_VERSION/docker-compose-linux-x86_64" \
+ && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose \
+ && docker compose version \
+ && curl -sSLo /usr/local/bin/docker-compose 'https://github.com/docker/compose/releases/download/1.29.2/docker-compose-Linux-x86_64' \
+ && chmod +x /usr/local/bin/docker-compose \
+ && docker-compose --version
+
 
 VOLUME /var/jenkins_home
 
