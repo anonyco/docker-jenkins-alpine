@@ -7,7 +7,13 @@
 
 # Jenkins+Docker in Alpine
 
-This simple project mix-mashes Jenkins, Docker, and Alpine all into one docker container you can run on Linux AMD64. I also have a build cronjob running on my main desktop that updates and tests the image every day. Notice that it only performs two tests: (1.) that the Jenkins CI is hosting an HTTP server, and (2.) that docker containers can be runned as the Jenkins user. Additional tests are a welcome addition if you would like to contribute. It is possible for these tests to pass but unforseen issues to arise, so I would reccomend only using latest if you're going to be around to resolve issues if they arise.
+This simple project mix-mashes Jenkins, Docker, docker-compose, `docker compose`, and Alpine all into one docker container you can run on Linux AMD64. I also have a build cronjob running on my main desktop that updates and tests the image for basic functionality every day (an image will never be pushed if either docker, jenkins, docker-compose, or the `docker compose` plugin are non-functional):
+
+```
+docker run --rm --name your_friendly_name_here --privileged -p 8080:8080 -v "$PWD/certs/:/certs/:rw" -v "$PWD/var-lib-docker/:/var/lib/docker/:rw" -v "$PWD/jenkins_home/:/var/jenkins_home/:rw" -v "$PWD/var-cache-apk:/var/cache/apk:rw" jackanonyco/docker-jenkins-alpine:jdk11
+```
+
+See the Docker Hub repo at [https://hub.docker.com/r/jackanonyco/docker-jenkins-alpine](https://hub.docker.com/r/jackanonyco/docker-jenkins-alpine)
 
 ### Image credits
 
