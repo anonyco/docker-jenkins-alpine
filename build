@@ -154,7 +154,14 @@ echoback() {
 tagAndPushAndRmImage() (
   set -e
   echoback docker tag local/docker-jenkins-alpine "$1"
-  echoback docker push "$1"
+  while true ; do
+    if echoback timeout 500 docker push "$1" ; then
+      break
+    elif test $? -ne 124 ; then
+      # if it timed out, then the exit code is 124
+      kill $$
+    fi
+  done
   echoback docker image rm "$1"
 )
 
