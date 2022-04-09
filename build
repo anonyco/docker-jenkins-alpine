@@ -74,7 +74,7 @@ cutComposeVersion="$( echo "$latestComposeVersion" | cut -c2- )"
 
 if test "${RUN_BUILD:-y}" = "y" ; then
   printf '\n\n\e[0;32mNow building...\e(B\e[m\n'
-  docker build --build-arg "DOCKER_VERSION=$latestDockerVersion" --build-arg "JENKINS_BASE_IMAGE=$jenkinsBaseImage" --build-arg "DOCKER_COMPOSE_VERSION=$latestComposeVersion" -f docker-resources/Dockerfile -t local/docker-jenkins-alpine docker-resources
+  docker build --pull --compress --build-arg "DOCKER_VERSION=$latestDockerVersion" --build-arg "JENKINS_BASE_IMAGE=$jenkinsBaseImage" --build-arg "DOCKER_COMPOSE_VERSION=$latestComposeVersion" -f docker-resources/Dockerfile -t local/docker-jenkins-alpine docker-resources
 
   printf '\n\n\e[0;32mBuild was successful\e(B\e[m\n'
 else
