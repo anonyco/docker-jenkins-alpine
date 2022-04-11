@@ -159,38 +159,69 @@ tagAndPushAndRmImage() (
       break
     elif test $? -ne 124 ; then
       # if it timed out, then the exit code is 124
-      kill $$
+      exit 0
     fi
   done
   echoback docker image rm "$1"
 )
 
-for compVer in ',' "compose$cutComposeVersion-" "compose$composeMinorVersion-" "compose$composeMajorVersion-"
-do
-  if test -z "$compVer" ; then
-    # sanity check
-    continue
-  fi
-  for dockVer in ',' "docker$latestDockerVersion-" "docker$dockerMinorVersion-" "docker$dockerMajorVersion-"
+if test -z "$REPOPREFIX" ; then
+  REPOPREFIXWITHSLASH=''
+else
+  REPOPREFIXWITHSLASH="$REPOPREFIX/"
+fi
+
+forEachTag() {
+  for compVer in "compose$cutComposeVersion-" "compose$composeMinorVersion-" "compose$composeMajorVersion-" ','
   do
-    if test -z "$dockVer" ; then
+    if test -z "$compVer" ; then
       # sanity check
       continue
     fi
-    for jenkVer in ',' "jenkins$jenkinsRevisionVersion-" "jenkins$jenkinsMinorVersion-" "jenkins$jenkinsMajorVersion-"
+    for dockVer in "docker$latestDockerVersion-" "docker$dockerMinorVersion-" "docker$dockerMajorVersion-" ','
     do
-      if test -z "$jenkVer" ; then
+      if test -z "$dockVer" ; then
         # sanity check
         continue
       fi
-      
-      nextTag="$REPOPREFIX/docker-jenkins-alpine:${compVer%,}${dockVer%,}${jenkVer%,}$jenkinsNameSuffix"
-      echo "STATUS: aliasing $nextTag -> local/docker-jenkins-alpine"
-      
-      tagAndPushAndRmImage "$nextTag"
+      for jenkVer in "jenkins$jenkinsRevisionVersion-" "jenkins$jenkinsMinorVersion-" "jenkins$jenkinsMajorVersion-" ','
+      do
+        if test -z "$jenkVer" ; then
+          # sanity check
+          continue
+        fi
+        
+        nextTag="$REPOPREFIXWITHSLASH""docker-jenkins-alpine:${compVer%,}${dockVer%,}${jenkVer%,}$jenkinsNameSuffix"
+        if test "$3" = "tag" ; then
+          echo "STATUS: aliasing $nextTag -> local/docker-jenkins-alpine" 1>&2
+        fi
+        
+        "$@" "$nextTag"
+      done
     done
   done
+}
+
+#forEachTag tagAndPushAndRmImage
+
+# clear out any previously existing images
+#docker image ls docker-jenkins-alpine --format '{{print .Tag}}' | xargs printf 'docker-jenkins-alpine:%s\n' | xargs docker rmi
+echoback docker rmi $(docker image ls "$REPOPREFIXWITHSLASH""docker-jenkins-alpine" --format '{{print .Tag}}' | xargs printf "$REPOPREFIXWITHSLASH""docker-jenkins-alpine"':%s\n')
+
+forEachTag echoback docker tag local/docker-jenkins-alpine
+
+while true ; do
+  #if echoback docker push $( forEachTag echo ) ; then
+  # if its getting stuck, then add --max-concurrent-uploads=1 to the Start parameter of /lib/systemd/system/docker.service
+  if echoback docker push --all-tags "$REPOPREFIXWITHSLASH""docker-jenkins-alpine" ; then
+    break
+  elif test $? -ne 124 ; then
+    # if it timed out, then the exit code is 124
+    kill $$
+  fi
 done
+
+echoback docker image rm -f $(forEachTag echo)
 
 echo
 echo 'STATUS: all tags pushed up and done!'
